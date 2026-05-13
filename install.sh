@@ -92,6 +92,24 @@ else
   brew install "${missing[@]}"
 fi
 
+# ---------- migrate z.sh history into zoxide ----------
+# If you previously used the z.sh "frecency" jump tool, its history lives at
+# ~/.z. Import it into zoxide on first run so your old jump targets carry over.
+# The .imported sentinel makes this idempotent across re-runs.
+if [ -f "$HOME/.z" ] && [ ! -f "$HOME/.z.imported-to-zoxide" ] && command -v zoxide >/dev/null; then
+  log "migrating ~/.z history into zoxide"
+  if zoxide import --from z "$HOME/.z"; then
+    mv "$HOME/.z" "$HOME/.z.imported-to-zoxide"
+    ok "imported $(wc -l < "$HOME/.z.imported-to-zoxide" | tr -d ' ') entries; backup left at ~/.z.imported-to-zoxide"
+  fi
+fi
+
+# Surface a heads-up if z.sh sourcing is still in their .zshrc — script
+# intentionally doesn't edit user dotfiles.
+if grep -q "z/z\.sh\|/z\.sh" "$HOME/.zshrc" 2>/dev/null; then
+  log "heads-up: your ~/.zshrc still sources z.sh. Comment out or remove that line so zoxide's \`z\` takes over without conflicts."
+fi
+
 # ---------- gh extensions ----------
 if command -v gh >/dev/null 2>&1 && [ "${#GH_EXTENSIONS[@]}" -gt 0 ]; then
   log "installing gh extensions"
@@ -148,6 +166,32 @@ alias tree='eza --tree'
 
 # delta as the git pager (only affects interactive git)
 export GIT_PAGER='delta --side-by-side --line-numbers'
+
+# History — zsh defaults are tiny. Set sane sizes + good behavior.
+HISTFILE="$HOME/.zsh_history"
+HISTSIZE=50000
+SAVEHIST=50000
+setopt SHARE_HISTORY           # all panes see all history
+setopt INC_APPEND_HISTORY      # write history line-by-line, not just on exit
+setopt HIST_IGNORE_DUPS        # don't store consecutive duplicates
+setopt HIST_IGNORE_SPACE       # don't store commands prefixed with a space
+setopt HIST_REDUCE_BLANKS      # collapse whitespace in stored commands
+setopt HIST_VERIFY             # !! and friends ask before executing
+
+# Pager / less — colors through pipes, exit if one screenful, no clear, mouse
+export PAGER=less
+export LESS='-R -F -X --mouse'
+
+# Brew — skip auto-update on every command (you can run `brew update` manually
+# when you want), and opt out of analytics
+export HOMEBREW_NO_AUTO_UPDATE=1
+export HOMEBREW_NO_ANALYTICS=1
+export HOMEBREW_NO_ENV_HINTS=1
+
+# EDITOR — set a sensible default if nothing else has
+: "${EDITOR:=vim}"
+: "${VISUAL:=$EDITOR}"
+export EDITOR VISUAL
 
 EOF
 ok "wrote $HOME/.zshrc.utils"
