@@ -2,8 +2,9 @@
 # Portable dev environment bootstrap.
 #
 # Installs a curated set of modern CLI tools (bat, fd, fzf, ripgrep, eza,
-# zoxide, jq, just, lazygit, delta, dust, httpie, tree, uv, tmux, mosh) plus
-# Bun, and writes a ~/.zshrc.utils snippet you can opt into for ergonomic
+# zoxide, jq, just, lazygit, delta, dust, httpie, tldr, btop, watchexec, croc,
+# trash, yq, gron, glow, mdcat, mprocs, bandwhich, mosh, tmux, uv, gh + gh-dash),
+# plus Bun, and writes a ~/.zshrc.utils snippet you can opt into for ergonomic
 # aliases and shell integrations (fzf keybindings, zoxide init).
 #
 # Designed to run on a fresh / work / borrowed Mac without touching your
@@ -21,10 +22,16 @@ set -euo pipefail
 # Curated subset of "modern CLI" tools — useful everywhere, no identity bleed,
 # no work-conflict concerns.
 FORMULAE=(
+  bandwhich         # network usage by process (needs sudo to run)
   bat               # cat with syntax highlighting
+  btop              # modern htop with graphs
+  croc              # E2E-encrypted file transfer between machines
   fd                # find, but fast and sane
   fzf               # fuzzy finder (also wires Ctrl-R history search)
+  gh                # GitHub CLI
   git-delta         # side-by-side git diffs
+  glow              # markdown renderer (TUI + per-file)
+  gron              # make JSON greppable for grep/awk pipelines
   ripgrep           # rg — fast grep
   eza               # ls replacement
   zoxide            # z — smart cd by frecency
@@ -33,10 +40,22 @@ FORMULAE=(
   lazygit           # TUI git client
   dust              # disk usage tree
   httpie            # http command, JSON-pretty curl
+  mdcat             # markdown cat — inline images in iTerm2
+  mprocs            # multi-process TUI for local dev
+  tealdeer          # `tldr <cmd>` — practical examples
+  trash             # `rm` that goes to macOS Trash (recoverable)
   tree              # classic tree
   uv                # Python package + venv manager
+  watchexec         # run a command when files change
   tmux              # terminal multiplexer
   mosh              # SSH that survives reconnects
+  yq                # jq for YAML / TOML / XML
+)
+
+# `gh` extensions — installed via `gh extension install <repo>` after gh itself
+# is in place. Skip if you don't use gh.
+GH_EXTENSIONS=(
+  dlvhdr/gh-dash    # `gh dash` — TUI dashboard for PRs/issues across repos
 )
 
 # ---------- helpers ----------
@@ -71,6 +90,17 @@ if [ "${#missing[@]}" -eq 0 ]; then
   ok "all tools already installed"
 else
   brew install "${missing[@]}"
+fi
+
+# ---------- gh extensions ----------
+if command -v gh >/dev/null 2>&1 && [ "${#GH_EXTENSIONS[@]}" -gt 0 ]; then
+  log "installing gh extensions"
+  installed_exts=$(gh extension list 2>/dev/null || true)
+  for ext in "${GH_EXTENSIONS[@]}"; do
+    if ! grep -q "$ext" <<<"$installed_exts"; then
+      gh extension install "$ext"
+    fi
+  done
 fi
 
 # ---------- bun ----------
@@ -143,6 +173,12 @@ Highlights you now have:
   lazygit         TUI git client
   just            modern make
   http GET ...    JSON-pretty curl alternative
+  tldr <cmd>      practical examples for any CLI
+  btop            modern htop
+  watchexec       rerun commands on file change
+  croc send X     E2E-encrypted file transfer to another machine
+  trash <file>    rm that goes to Trash (recoverable)
+  gh dash         TUI dashboard for your GitHub PRs/issues
 
 Re-run this script whenever you want updates. It's idempotent.
 EOF
